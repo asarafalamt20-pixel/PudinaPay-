@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#0e8f67"><title>Pudina Pay — Demo Wallet</title>
+<link rel="stylesheet" href="/style.css">
+</head>
+<body>
+<div class="notice">DEMO ONLY · No real money is transferred</div>
+<main class="shell">
+  <header class="topbar"><div class="brand"><span class="leaf">✦</span><div><strong>Pudina Pay</strong><small>Simple demo wallet</small></div></div><button id="logoutBtn" class="ghost hidden">Log out</button></header>
+  <section id="authView" class="auth-card">
+    <div class="hero-icon">₹</div><h1>Money made simple.</h1><p class="muted">Try a safe simulated wallet. This is not a bank account or UPI service.</p>
+    <div class="tabs"><button class="tab active" data-mode="login">Login</button><button class="tab" data-mode="register">Create account</button></div>
+    <form id="authForm"><label id="nameLabel" class="hidden">Name<input id="name" autocomplete="name"></label><label>Email<input id="email" type="email" required autocomplete="username" placeholder="you@example.com"></label><label>Password<input id="password" type="password" required minlength="8" autocomplete="current-password" placeholder="At least 8 characters"></label><button class="primary wide" id="authSubmit">Login</button></form>
+    <div class="demo-creds"><b>Try demo accounts</b><p>User: <code>user@pudinapay.demo</code> / <code>DemoUser123!</code></p><p>Admin: <code>admin@pudinapay.demo</code> / <code>DemoAdmin123!</code></p><button id="fillUser" class="text-btn">Fill user login</button><button id="fillAdmin" class="text-btn">Fill admin login</button></div>
+    <p id="authError" class="error"></p>
+  </section>
+  <section id="appView" class="hidden">
+    <div class="welcome"><div><span class="muted">Welcome back,</span><h1 id="userName">Demo User</h1></div><div class="avatar" id="avatar">U</div></div>
+    <div class="balance-card"><div class="balance-head"><span>Simulated wallet balance</span><span class="pill">DEMO</span></div><div class="balance" id="balance">₹500.00</div><p>Test balance only — no real funds.</p><div class="balance-actions"><button id="addBtn" class="white-btn">＋ Add demo money</button><button id="sendBtn" class="glass-btn">↗ Send demo</button></div></div>
+    <nav class="nav"><button class="nav-btn active" data-page="home">⌂<span>Home</span></button><button class="nav-btn" data-page="history">↕<span>History</span></button><button class="nav-btn" data-page="qr">▦<span>QR Code</span></button><button class="nav-btn" data-page="notifications">♧<span>Alerts</span><i id="notifDot" class="dot hidden"></i></button><button id="adminNav" class="nav-btn hidden" data-page="admin">⚙<span>Admin</span></button></nav>
+    <section id="page-home" class="page"><div class="section-head"><h2>Quick actions</h2><span class="muted">Demo mode</span></div><div class="quick-grid"><button class="quick" data-action="add"><span class="quick-icon mint">＋</span><b>Add money</b><small>Simulated top-up</small></button><button class="quick" data-action="send"><span class="quick-icon blue">↗</span><b>Send money</b><small>Demo transfer</small></button><button class="quick" data-page="qr"><span class="quick-icon gold">▦</span><b>My QR</b><small>Demo payment QR</small></button><button class="quick" data-page="history"><span class="quick-icon violet">◷</span><b>History</b><small>Recent activity</small></button></div><div class="section-head"><h2>Recent transactions</h2><button class="text-btn" data-page="history">View all</button></div><div id="recentList" class="list"></div></section>
+    <section id="page-history" class="page hidden"><div class="section-head"><h2>Transaction history</h2><span class="muted">Latest 100</span></div><div id="historyList" class="list"></div></section>
+    <section id="page-qr" class="page hidden"><div class="section-head"><h2>Demo QR code</h2></div><div class="qr-card"><div id="qrCanvas" class="qr-box"></div><h3 id="qrName">Pudina Pay user</h3><p id="qrEmail" class="muted"></p><p class="warning">This QR contains demo information only. Scanning it does not initiate a real payment.</p><button id="copyQr" class="primary">Copy demo QR text</button></div><form id="scanForm" class="panel"><h3>Simulate QR scan</h3><p class="muted">Paste a registered demo email to prepare a simulated transfer.</p><label>Recipient email<input id="scanEmail" type="email" required placeholder="user@pudinapay.demo"></label><button class="primary wide">Continue to demo transfer</button></form></section>
+    <section id="page-notifications" class="page hidden"><div class="section-head"><h2>Notifications</h2></div><div id="notificationList" class="list"></div></section>
+    <section id="page-admin" class="page hidden"><div class="section-head"><h2>Admin dashboard</h2><span class="pill">DEMO</span></div><div class="stats" id="adminStats"></div><div class="section-head"><h3>Accounts</h3></div><div id="adminUsers" class="list"></div><div class="section-head"><h3>Latest demo transactions</h3></div><div id="adminTransactions" class="list"></div><p class="warning">Admin data is for demo testing. No actual settlement or banking information is available.</p></section>
+  </section>
+  <div id="toast" role="status" class="toast hidden"></div>
+  <footer>© Pudina Pay · Demo software · Not affiliated with any bank or UPI provider.</footer>
+</main>
+<dialog id="actionDialog"><form method="dialog" class="dialog-close"><button aria-label="Close">×</button></form><h2 id="dialogTitle">Demo action</h2><p id="dialogDesc" class="muted"></p><form id="actionForm"><div id="amountWrap"><label>Amount (₹)<input id="amount" type="number" min="1" step="1" value="100"></label></div><div id="recipientWrap" class="hidden"><label>Recipient email<input id="recipientEmail" type="email" placeholder="user@pudinapay.demo"></label></div><button id="actionSubmit" class="primary wide">Continue</button></form><p class="warning">Simulation only. No real money will be sent or received.</p></dialog>
+<script src="https://cdn.jsdelivr.net/npm/qrcodejs@1.0.0/qrcode.min.js"></script><script src="/app.js"></script>
+</body></html>
