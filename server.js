@@ -109,6 +109,15 @@ app.get('/api/me', auth, (req,res) => {
  if (!user) return res.status(404).json({error:'User not found.'});
  res.json({user:userPublic(user)});
 });
+
+app.get('/api/users/lookup-phone', auth, (req,res) => {
+ const phone = String(req.query.phone || '').replace(/\D/g,'');
+ if (!/^[6-9]\d{9}$/.test(phone)) return res.status(400).json({error:'Enter a valid 10-digit mobile number.'});
+ const user = db.prepare('SELECT name,phone FROM users WHERE phone=?').get(phone);
+ if (!user) return res.status(404).json({error:'No Pudina Pay account found for this number.'});
+ res.json({name:user.name, phone:user.phone});
+});
+
 app.get('/api/transactions', auth, (req,res) => {
  const rows = db.prepare('SELECT id,type,amount,note,status,created_at FROM transactions WHERE user_id=? ORDER BY id DESC LIMIT 100').all(req.user.id);
  res.json({transactions:rows});
