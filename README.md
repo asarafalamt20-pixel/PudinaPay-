@@ -59,3 +59,17 @@ For a public production app, use a managed database and a security review. Rende
 
 ## Android
 The `android/` folder contains a minimal Android Studio WebView wrapper. By default it loads the deployed web app URL; update `APP_URL` in `MainActivity.kt`. For a local-only build, copy web assets into Android assets and adjust the URL to `file:///android_asset/index.html` (API calls would also need a local backend or deployed API URL).
+
+
+## Render deployment settings
+- Root Directory: leave blank (files are at repository root)
+- Build Command: `npm install`
+- Start Command: `npm start`
+- `NODE_ENV`: `production`
+- `JWT_SECRET`: use Render's generated secret
+- `ADMIN_EMAIL`: `asarafalamt20@gmail.com`
+- `ADMIN_PASSWORD`: set a strong private password in Render
+- `DB_PATH`: `/var/data/pudina-pay.sqlite`
+
+The Render disk configuration in `render.yaml` mounts persistent storage at `/var/data`.
+This is a demo wallet only; it does not perform real bank or UPI payments.
