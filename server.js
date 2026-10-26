@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS users (
  id INTEGER PRIMARY KEY AUTOINCREMENT,
  name TEXT NOT NULL,
  email TEXT NOT NULL UNIQUE,
+ phone TEXT UNIQUE,
  password_hash TEXT NOT NULL,
  role TEXT NOT NULL DEFAULT 'user',
  balance INTEGER NOT NULL DEFAULT 50000,
@@ -41,17 +42,19 @@ CREATE TABLE IF NOT EXISTS notifications (
  FOREIGN KEY(user_id) REFERENCES users(id)
 );
 `);
-function ensureUser(name, email, password, role) {
+// Upgrade an existing database safely.
+try { db.exec('ALTER TABLE users ADD COLUMN phone TEXT'); } catch (e) { if (!String(e.message).includes('duplicate column')) throw e; }
+function ensureUser(name, email, password, role, phone=null) {
  const existing = db.prepare('SELECT id FROM users WHERE email=?').get(email.toLowerCase());
  if (!existing) {
    const hash = bcrypt.hashSync(password, 10);
-   const info = db.prepare('INSERT INTO users(name,email,password_hash,role,balance) VALUES(?,?,?,?,?)')
-     .run(name, email.toLowerCase(), hash, role, 50000);
+   const info = db.prepare('INSERT INTO users(name,email,password_hash,role,balance,phone) VALUES(?,?,?,?,?,?)')
+     .run(name, email.toLowerCase(), hash, role, 50000, phone);
    db.prepare('INSERT INTO notifications(user_id,message) VALUES(?,?)').run(info.lastInsertRowid, 'Welcome to Pudina Pay demo. No real money is moved.');
  }
 }
-ensureUser('Pudina Pay Admin', process.env.ADMIN_EMAIL || 'admin@pudinapay.demo', process.env.ADMIN_PASSWORD || 'DemoAdmin123!', 'admin');
-ensureUser('Demo User', 'user@pudinapay.demo', 'DemoUser123!', 'user');
+ensureUser('Pudina Pay Admin', process.env.ADMIN_EMAIL || 'admin@pudinapay.demo', process.env.ADMIN_PASSWORD || 'DemoAdmin123!', 'admin', '9000000001');
+ensureUser('Demo User', 'user@pudinapay.demo', 'DemoUser123!', 'user', '9000000002');
 
 app.use(cors());
 app.use(express.json({ limit: '100kb' }));
@@ -74,18 +77,19 @@ function notify(userId, message) {
  db.prepare('INSERT INTO notifications(user_id,message) VALUES(?,?)').run(userId, message);
 }
 function userPublic(user) {
- return { id: user.id, name: user.name, email: user.email, role: user.role, balance: user.balance };
+ return { id: user.id, name: user.name, email: user.email, phone: user.phone || '', role: user.role, balance: user.balance };
 }
 app.get('/api/health', (req,res)=>res.json({ok:true, app:'Pudina Pay', mode:'DEMO_ONLY', realMoney:false}));
 
 app.post('/api/auth/register', (req,res) => {
  const {name,email,password} = req.body || {};
- if (!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || typeof password !== 'string' || password.length < 8)
-   return res.status(400).json({error:'Enter a name, valid email, and password of at least 8 characters.'});
+ const phone = String(req.body?.phone || '').replace(/\D/g,'');
+ if (!name || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !/^[6-9]\d{9}$/.test(phone) || typeof password !== 'string' || password.length < 8)
+   return res.status(400).json({error:'Enter a name, valid email, 10-digit Indian mobile number, and password of at least 8 characters.'});
  try {
    const hash = bcrypt.hashSync(password, 10);
-   const info = db.prepare('INSERT INTO users(name,email,password_hash,role,balance) VALUES(?,?,?,?,?)')
-     .run(String(name).slice(0,60), email.toLowerCase(), hash, 'user', 50000);
+   const info = db.prepare('INSERT INTO users(name,email,password_hash,role,balance,phone) VALUES(?,?,?,?,?,?)')
+     .run(String(name).slice(0,60), email.toLowerCase(), hash, 'user', 50000, phone);
    notify(info.lastInsertRowid, 'Welcome! Your demo wallet starts with ₹500.00 simulated balance.');
    const user = db.prepare('SELECT * FROM users WHERE id=?').get(info.lastInsertRowid);
    const token = jwt.sign({id:user.id,email:user.email,role:user.role}, JWT_SECRET, {expiresIn:'12h'});
@@ -123,24 +127,26 @@ app.post('/api/wallet/add-demo', auth, (req,res) => {
 });
 app.post('/api/wallet/send-demo', auth, (req,res) => {
  const amount = Number(req.body?.amount);
- const recipientEmail = String(req.body?.recipientEmail || '').toLowerCase();
+ const recipientEmail = String(req.body?.recipientEmail || '').trim().toLowerCase();
+ const recipientPhone = String(req.body?.recipientPhone || '').replace(/\D/g,'');
  if (!Number.isInteger(amount) || amount < 1 || amount > 100000) return res.status(400).json({error:'Enter a valid whole-rupee demo amount.'});
- const recipient = db.prepare('SELECT * FROM users WHERE email=?').get(recipientEmail);
+ if (!recipientEmail && !/^[6-9]\d{9}$/.test(recipientPhone)) return res.status(400).json({error:'Enter a registered mobile number or account email.'});
+ const recipient = recipientPhone ? db.prepare('SELECT * FROM users WHERE phone=?').get(recipientPhone) : db.prepare('SELECT * FROM users WHERE email=?').get(recipientEmail);
  const sender = db.prepare('SELECT * FROM users WHERE id=?').get(req.user.id);
- if (!recipient) return res.status(404).json({error:'Recipient is not registered in this demo app.'});
+ if (!recipient) return res.status(404).json({error:'This mobile number or email is not registered in Pudina Pay.'});
  if (recipient.id === sender.id) return res.status(400).json({error:'Choose another demo account.'});
  const cents = amount * 100;
  if (sender.balance < cents) return res.status(400).json({error:'Insufficient simulated balance.'});
  const tx = db.transaction(() => {
    db.prepare('UPDATE users SET balance=balance-? WHERE id=?').run(cents, sender.id);
    db.prepare('UPDATE users SET balance=balance+? WHERE id=?').run(cents, recipient.id);
-   db.prepare("INSERT INTO transactions(user_id,type,amount,note,status) VALUES(?,?,?,?, 'SIMULATED')").run(sender.id,'DEBIT',cents,`Demo transfer to ${recipient.email} — not real money`);
-   db.prepare("INSERT INTO transactions(user_id,type,amount,note,status) VALUES(?,?,?,?, 'SIMULATED')").run(recipient.id,'CREDIT',cents,`Demo transfer from ${sender.email} — not real money`);
-   notify(sender.id, `Demo transfer of ₹${amount.toFixed(2)} to ${recipient.email}; no real money moved.`);
-   notify(recipient.id, `Received ₹${amount.toFixed(2)} demo balance from ${sender.email}; no real money moved.`);
+   db.prepare("INSERT INTO transactions(user_id,type,amount,note,status) VALUES(?,?,?,?, 'SIMULATED')").run(sender.id,'DEBIT',cents,`Transfer to ${recipient.phone || recipient.email} — simulated`);
+   db.prepare("INSERT INTO transactions(user_id,type,amount,note,status) VALUES(?,?,?,?, 'SIMULATED')").run(recipient.id,'CREDIT',cents,`Transfer from ${sender.phone || sender.email} — simulated`);
+   notify(sender.id, `Transfer of ₹${amount.toFixed(2)} to ${recipient.name} recorded.`);
+   notify(recipient.id, `Received ₹${amount.toFixed(2)} from ${sender.name}.`);
  });
  tx();
- res.json({message:'Demo transfer completed in the simulator only.'});
+ res.json({message:'Transfer recorded in the Pudina Pay test wallet. No real money was sent.'});
 });
 app.get('/api/notifications', auth, (req,res) => {
  res.json({notifications:db.prepare('SELECT id,message,read,created_at FROM notifications WHERE user_id=? ORDER BY id DESC LIMIT 50').all(req.user.id)});

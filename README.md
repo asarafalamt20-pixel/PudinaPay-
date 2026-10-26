@@ -73,3 +73,10 @@ The `android/` folder contains a minimal Android Studio WebView wrapper. By defa
 
 The Render disk configuration in `render.yaml` mounts persistent storage at `/var/data`.
 This is a demo wallet only; it does not perform real bank or UPI payments.
+
+
+## Send by mobile and QR scanning
+- Registration supports a unique 10-digit Indian mobile number.
+- Send transfers can look up a registered account by mobile number or email.
+- QR screen supports camera scanning and selecting an image from the gallery in browsers that support BarcodeDetector. Only Pudina Pay account QR payloads are accepted.
+- Transfers remain simulated; this project does not send real UPI payments or real money.
