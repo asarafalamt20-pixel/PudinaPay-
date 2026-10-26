@@ -28,3 +28,12 @@
 
 /* Slim balance shortcut above Home quick actions */
 .balance-strip{width:100%;display:flex;align-items:center;gap:10px;text-align:left;background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 14px;margin:4px 0 18px;color:var(--deep);font-weight:800;box-shadow:0 4px 16px rgba(12,100,72,.04)}.balance-strip-icon{width:28px;height:28px;border-radius:9px;background:#e7f7ef;display:grid;place-items:center;color:var(--green)}.balance-strip-arrow{margin-left:auto;font-size:24px;color:var(--muted);line-height:1}#page-scan .scan-focus{justify-content:flex-start;min-height:70vh;padding-top:16px}#page-scan .qr-video{order:-2;width:100%;max-width:560px;max-height:42vh;min-height:220px;object-fit:cover;border-radius:18px;background:#101714;margin:0 0 10px}#page-scan .scan-frame{order:-1;width:min(70vw,250px);height:min(70vw,250px);flex-shrink:0}#page-scan .scan-focus h3{margin-top:8px}
+/* Large camera viewfinder and cross-app QR sharing */
+#page-scan .scan-viewfinder{position:relative;width:min(88vw,430px);aspect-ratio:1/1;max-width:100%;display:grid;place-items:center;border:4px solid var(--green);border-radius:28px;overflow:hidden;background:linear-gradient(135deg,#effbf6,#fff);margin:2px auto 14px;box-shadow:inset 0 0 0 1px #0e8f6712}
+#page-scan .scan-viewfinder .scan-frame{width:100%;height:100%;border:0;border-radius:0;background:transparent;font-size:clamp(76px,22vw,130px);display:grid;place-items:center}
+#page-scan .scan-viewfinder .qr-video{position:absolute;inset:0;width:100%;height:100%;min-height:0;max-height:none;max-width:none;object-fit:cover;border-radius:0;margin:0;z-index:2}
+.share-actions{display:flex;flex-wrap:wrap;justify-content:center;gap:8px;margin:14px 0 4px}
+.share-actions button{font-size:12px;padding:10px 12px;border-radius:11px;max-width:100%}
+.bank-qr-card .share-actions{gap:6px}
+.bank-qr-card .share-actions button{padding:8px 9px;font-size:11px}
+@media(max-width:380px){#page-scan .scan-viewfinder{width:82vw}.share-actions button{font-size:11px;padding:9px}}
