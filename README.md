@@ -80,3 +80,6 @@ This is a demo wallet only; it does not perform real bank or UPI payments.
 - Send transfers can look up a registered account by mobile number or email.
 - QR screen supports camera scanning and selecting an image from the gallery in browsers that support BarcodeDetector. Only Pudina Pay account QR payloads are accepted.
 - Transfers remain simulated; this project does not send real UPI payments or real money.
+
+## Commission split (demo estimator)
+The Home page includes a commission estimator using the operator rates supplied by the app owner. It allocates 70% of estimated provider commission to the customer reward and 30% to Pudina Pay. The estimator does not credit real rewards. In production, issue rewards only after an authorized recharge API confirms success and the provider confirms the commission; handle reversals/refunds and payouts through authorized provider APIs. The current project remains a demo and does not perform real recharge, payment verification, reward settlement, or bank/UPI withdrawals.

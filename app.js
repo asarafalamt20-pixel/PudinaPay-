@@ -85,7 +85,7 @@ const rechargeConfigs={
  'FASTag':{operators:['SBI FASTag','HDFC FASTag','ICICI FASTag','Airtel Payments Bank FASTag','Paytm FASTag','Other bank'],label:'Vehicle registration / FASTag ID',placeholder:'Enter vehicle number or FASTag ID',input:'text',hint:'Choose the FASTag issuer linked to your vehicle.'}
 };
 function renderRechargePlans(){const box=$('mobilePlans');if(box)box.classList.add('hidden')}
-function populateRechargeForm(service){const cfg=rechargeConfigs[service]||rechargeConfigs['Prepaid Mobile'];$('rechargeType').value=service;$('rechargeDialogTitle').textContent=service+' Recharge / Payment';$('rechargeOperator').innerHTML=cfg.operators.map(x=>`<option>${esc(x)}</option>`).join('');$('rechargeNumberLabel').childNodes[0].textContent=cfg.label;$('rechargeNumber').placeholder=cfg.placeholder;$('rechargeNumber').type=cfg.input;$('rechargeNumber').value='';$('rechargeAmount').value=service==='Prepaid Mobile'||service==='Data Pack'?'199':'';$('rechargeFormStatus').textContent=cfg.hint||'';$('rechargeForm').dataset.planInfo='';}
+function populateRechargeForm(service){const cfg=rechargeConfigs[service]||rechargeConfigs['Prepaid Mobile'];$('rechargeType').value=service;$('rechargeDialogTitle').textContent=service==='Electricity'||service==='Broadband'||service==='Gas'||service==='Water'||service==='Landline'?'Pay '+service+' Bill':service+' Recharge';$('rechargeOperator').innerHTML=cfg.operators.map(x=>`<option value="${esc(x)}">${esc(x)}</option>`).join('');$('rechargeOperatorLabel').firstChild.textContent=service==='Electricity'?'Electricity board':service==='Gas'?'Gas provider':service==='Water'?'Water provider':service==='FASTag'?'FASTag issuer':service==='DTH'?'DTH operator':service==='Broadband'?'Broadband provider':service==='Landline'?'Telephone provider':'Operator';$('rechargeNumberLabel').firstChild.textContent=cfg.label;$('rechargeNumber').placeholder=cfg.placeholder;$('rechargeNumber').type=cfg.input;$('rechargeNumber').value='';$('rechargeNumber').setAttribute('autocomplete','off');$('rechargeAmount').value=service==='Prepaid Mobile'||service==='Data Pack'?'199':'';$('rechargeAmount').placeholder='Enter amount';$('rechargeFormStatus').textContent=cfg.hint||'';$('rechargeForm').dataset.planInfo='';}
 function openRechargeService(service){if(service==='Prepaid Mobile'||service==='Data Pack'){const box=$('mobilePlans');box.classList.remove('hidden');box.scrollIntoView({behavior:'smooth',block:'start'});renderPlanCards(service);}else{populateRechargeForm(service);$('rechargeDialog').showModal();}}
 function renderPlanCards(service='Prepaid Mobile'){const op=$('planOperator').value;const dataPlans=service==='Data Pack';$('mobilePlans').querySelector('h3').textContent=dataPlans?'Mobile data packs':'Mobile recharge plans';$('planList').innerHTML=planExamples.map((p,i)=>{const plan=dataPlans?{...p,label:'Data pack',calls:'Data only'}:p;return `<button type="button" class="plan-card" data-plan="${i}"><div class="plan-price">₹${plan.price}<span>${plan.label}</span></div><div class="plan-benefits"><b>${plan.validity}</b><span>${plan.data}</span><span>${plan.calls}</span><span>${plan.sms}</span></div><span class="plan-select">Select plan →</span></button>`}).join('');document.querySelectorAll('[data-plan]').forEach(b=>b.onclick=()=>{const p=planExamples[Number(b.dataset.plan)];const phone=$('planPhone').value.trim();if(!/^[6-9]\d{9}$/.test(phone)){toast('Enter a valid 10-digit mobile number first.');$('planPhone').focus();return}const chosenService=service;$('mobilePlans').classList.add('hidden');populateRechargeForm(chosenService);$('rechargeOperator').value=op;$('rechargeNumber').value=phone;$('rechargeAmount').value=p.price;$('rechargeForm').dataset.planInfo=`${p.validity}; ${p.data}; ${p.calls}; ${p.sms}`;$('rechargeFormStatus').textContent=`Selected: ₹${p.price} · ${p.validity} · ${p.data} · ${p.calls} · ${p.sms}. These are example details, not live operator offers.`;$('rechargeDialog').showModal();});}
 document.querySelectorAll('[data-service]').forEach(b=>b.addEventListener('click',()=>openRechargeService(b.dataset.service)));
@@ -183,3 +183,29 @@ $('requestBankOtp').onclick=()=>{const phone=$('bankLinkPhone').value.trim();if(
 $('verifyBankOtp').onclick=()=>{if(!chosenBank||!demoOtp){toast('Select a bank and request the test OTP first.');return}if($('bankOtpInput').value.trim()!==demoOtp){toast('OTP does not match.');return}const accounts=getDemoBanks();if(accounts.some(a=>a.bank===chosenBank.name&&a.phone===$('bankLinkPhone').value.trim())){toast('This demo bank is already added.');return}accounts.push({holder:me.name,bank:chosenBank.name,logo:chosenBank.logo,last4:String(Date.now()).slice(-4),phone:$('bankLinkPhone').value.trim(),pin:$('bankPinInput').value.trim(),ifsc:'DEMO0000000',id:'bank_'+Date.now()});saveDemoBanks(accounts);$('bankDialog').close();$('bankOtpInput').value='';demoOtp=null;renderSettings();renderBankRows('balanceBankList');renderBankSelect();renderQR();toast('Demo bank linked after OTP verification.');};
 async function init(){try{if(token){const d=await api('/me');me=d.user;showApp()}else showAuth()}catch{token='';localStorage.removeItem('pp_token');showAuth()}}
 init();
+
+
+// Commission split estimator. Rates are the user's supplied indicative provider rates.
+// It never credits a reward: that must wait for provider-confirmed success and commission settlement.
+const commissionRates={
+ 'Vodafone':[3.30,3.40,3.50], 'Airtel':[1.30,1.40,1.50], 'Jio':[0.80,0.90,1.00],
+ 'BSNL':[3.40,3.50,3.60], 'Idea':[3.30,3.40,3.50], 'Dish TV':[3.60,3.70,3.80],
+ 'Airtel Digital TV':[3.50,3.60,3.70], 'Sun Direct':[3.30,3.40,3.50],
+ 'Videocon DTH':[4.00,4.10,4.20], 'Tata Play':[3.50,3.60,3.70]
+};
+function updateCommissionEstimate(){
+ const operator=$('commissionOperator')?.value||'Jio';
+ const tier=['starter','gold','platinum'].indexOf($('commissionTier')?.value||'starter');
+ const amount=Number($('commissionAmount')?.value||0);
+ const rate=(commissionRates[operator]||commissionRates.Jio)[Math.max(0,tier)];
+ const valid=Number.isFinite(amount)&&amount>0&&amount<=1000000;
+ const gross=valid?Math.round(amount*rate)/100:0;
+ const customer=Math.round(gross*70)/100;
+ const owner=Math.round(gross*30)/100;
+ $('commissionGross').textContent=money(Math.round(gross*100));
+ $('commissionCustomer').textContent=money(Math.round(customer*100));
+ $('commissionOwner').textContent=money(Math.round(owner*100));
+}
+['commissionTier','commissionOperator','commissionAmount'].forEach(id=>$(id)?.addEventListener('input',updateCommissionEstimate));
+['commissionTier','commissionOperator'].forEach(id=>$(id)?.addEventListener('change',updateCommissionEstimate));
+updateCommissionEstimate();
