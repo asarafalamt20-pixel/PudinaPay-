@@ -37,3 +37,12 @@
 .bank-qr-card .share-actions{gap:6px}
 .bank-qr-card .share-actions button{padding:8px 9px;font-size:11px}
 @media(max-width:380px){#page-scan .scan-viewfinder{width:82vw}.share-actions button{font-size:11px;padding:9px}}
+
+/* Keep the camera stop control immediately below the large scanner frame. */
+#page-scan .stop-camera-below{order:0;align-self:center;margin:0 auto 6px;min-width:160px}
+#page-scan .scan-viewfinder{order:-2}
+#page-scan .scan-focus h3{order:1}
+#page-scan .scan-focus>p.muted{order:2}
+#page-scan .scan-actions{order:3}
+#page-scan .share-actions{order:4}
+#page-scan #scanStatus{order:5}
