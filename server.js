@@ -21,6 +21,7 @@ CREATE TABLE IF NOT EXISTS users (
  password_hash TEXT NOT NULL,
  role TEXT NOT NULL DEFAULT 'user',
  balance INTEGER NOT NULL DEFAULT 50000,
+ reward_balance INTEGER NOT NULL DEFAULT 0,
  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS transactions (
@@ -41,9 +42,19 @@ CREATE TABLE IF NOT EXISTS notifications (
  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
  FOREIGN KEY(user_id) REFERENCES users(id)
 );
+CREATE TABLE IF NOT EXISTS payout_requests (
+ id INTEGER PRIMARY KEY AUTOINCREMENT,
+ user_id INTEGER NOT NULL,
+ amount INTEGER NOT NULL,
+ upi_id TEXT NOT NULL,
+ status TEXT NOT NULL DEFAULT 'PENDING_DEMO',
+ created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+ FOREIGN KEY(user_id) REFERENCES users(id)
+);
 `);
 // Upgrade an existing database safely.
 try { db.exec('ALTER TABLE users ADD COLUMN phone TEXT'); } catch (e) { if (!String(e.message).includes('duplicate column')) throw e; }
+try { db.exec('ALTER TABLE users ADD COLUMN reward_balance INTEGER NOT NULL DEFAULT 0'); } catch (e) { if (!String(e.message).includes('duplicate column')) throw e; }
 function ensureUser(name, email, password, role, phone=null) {
  const existing = db.prepare('SELECT id FROM users WHERE email=?').get(email.toLowerCase());
  if (!existing) {
@@ -77,7 +88,7 @@ function notify(userId, message) {
  db.prepare('INSERT INTO notifications(user_id,message) VALUES(?,?)').run(userId, message);
 }
 function userPublic(user) {
- return { id: user.id, name: user.name, email: user.email, phone: user.phone || '', role: user.role, balance: user.balance };
+ return { id: user.id, name: user.name, email: user.email, phone: user.phone || '', role: user.role, balance: user.balance, rewardBalance: Number(user.reward_balance || 0) };
 }
 app.get('/api/health', (req,res)=>res.json({ok:true, app:'Pudina Pay', mode:'DEMO_ONLY', realMoney:false}));
 
@@ -116,6 +127,28 @@ app.get('/api/users/lookup-phone', auth, (req,res) => {
  const user = db.prepare('SELECT name,phone FROM users WHERE phone=?').get(phone);
  if (!user) return res.status(404).json({error:'No Pudina Pay account found for this number.'});
  res.json({name:user.name, phone:user.phone});
+});
+
+app.get('/api/rewards/summary', auth, (req,res) => {
+ const user = db.prepare('SELECT reward_balance FROM users WHERE id=?').get(req.user.id);
+ const payouts = db.prepare('SELECT id,amount,upi_id,status,created_at FROM payout_requests WHERE user_id=? ORDER BY id DESC LIMIT 20').all(req.user.id).map(p=>({...p,amount:Number(p.amount)}));
+ res.json({rewardBalance:Number(user?.reward_balance || 0),minimumWithdrawal:100,payouts});
+});
+app.post('/api/rewards/withdraw', auth, (req,res) => {
+ const amount = Number(req.body?.amount);
+ const upiId = String(req.body?.upiId || '').trim();
+ if (!Number.isFinite(amount) || Math.round(amount*100) !== amount*100 || amount < 1 || amount > 100000) return res.status(400).json({error:'Minimum withdrawal is ₹1.00. Enter a valid amount.'});
+ if (!/^[A-Za-z0-9._-]{2,256}@[A-Za-z0-9.-]{2,64}$/.test(upiId)) return res.status(400).json({error:'Enter a valid UPI ID, for example name@upi.'});
+ const cents = Math.round(amount*100);
+ const user = db.prepare('SELECT reward_balance FROM users WHERE id=?').get(req.user.id);
+ if (!user || Number(user.reward_balance || 0) < cents) return res.status(400).json({error:'Insufficient earned rewards. Rewards are credited only after verified successful recharge and provider commission confirmation.'});
+ const tx = db.transaction(()=>{
+   db.prepare('UPDATE users SET reward_balance=reward_balance-? WHERE id=?').run(cents,req.user.id);
+   db.prepare("INSERT INTO payout_requests(user_id,amount,upi_id,status) VALUES(?,?,?,'PENDING_DEMO')").run(req.user.id,cents,upiId);
+   notify(req.user.id,`Withdrawal request of ₹${amount.toFixed(2)} recorded as demo only. No real payout was sent.`);
+ });
+ tx();
+ res.json({message:'Withdrawal request recorded (DEMO ONLY). No real money was sent; an authorized payout provider must be connected for actual payment.'});
 });
 
 app.get('/api/transactions', auth, (req,res) => {

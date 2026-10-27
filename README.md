@@ -83,3 +83,11 @@ This is a demo wallet only; it does not perform real bank or UPI payments.
 
 ## Commission split (demo estimator)
 The Home page includes a commission estimator using the operator rates supplied by the app owner. It allocates 70% of estimated provider commission to the customer reward and 30% to Pudina Pay. The estimator does not credit real rewards. In production, issue rewards only after an authorized recharge API confirms success and the provider confirms the commission; handle reversals/refunds and payouts through authorized provider APIs. The current project remains a demo and does not perform real recharge, payment verification, reward settlement, or bank/UPI withdrawals.
+
+
+## Latest UI fixes (2026-10-27)
+- Fixed a JavaScript startup error caused by references to hidden/missing legacy wallet buttons. This error prevented the recharge handlers from loading.
+- Added a visible wallet balance and customer-reward balance card on Home.
+- Added a customer reward withdrawal request screen with a ₹1.00 minimum and UPI ID field.
+- Added reward summary and payout-request endpoints; requests are marked `PENDING_DEMO`.
+- Important: recharge forms currently validate details and show a preview only. They do not submit real recharges. Reward balance remains ₹0 until a verified provider commission/reward-credit integration is configured. Withdrawal requests are not real payouts until an authorized payout provider is connected. Never enter a UPI PIN in this app.
